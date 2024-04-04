@@ -102,7 +102,41 @@ namespace CppCoverage
 
 		return *exitCode;
 	}
-	
+
+	int Debugger::DebugProcess(int pid, IDebugEventsHandler& debugEventsHandler)
+	{
+		BOOL result = DebugActiveProcess(pid);
+		if (result == 0)
+			THROW(L"Cannot find process with this pid");
+
+		DEBUG_EVENT debugEvent;
+		boost::optional<int> exitCode;
+
+		processHandles_.clear();
+		threadHandles_.clear();
+		rootProcessId_ = pid;
+
+		while (!exitCode || !processHandles_.empty())
+		{
+			if (!WaitForDebugEvent(&debugEvent, INFINITE))
+				THROW_LAST_ERROR(L"Error WaitForDebugEvent:", GetLastError());
+
+			ProcessStatus processStatus = HandleDebugEvent(debugEvent, debugEventsHandler);
+
+			// Get the exit code of the root process
+			// Set once as we do not want EXCEPTION_BREAKPOINT to be override
+			if (processStatus.exitCode_ && rootProcessId_ == debugEvent.dwProcessId && !exitCode)
+				exitCode = processStatus.exitCode_;
+
+			auto continueStatus = boost::get_optional_value_or(processStatus.continueStatus_, DBG_CONTINUE);
+
+			if (!ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, continueStatus))
+				THROW_LAST_ERROR("Error in ContinueDebugEvent:", GetLastError());
+		}
+
+		return *exitCode;
+	}
+
 	//-------------------------------------------------------------------------
 	Debugger::ProcessStatus Debugger::HandleDebugEvent(
 		const DEBUG_EVENT& debugEvent,

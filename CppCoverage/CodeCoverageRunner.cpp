@@ -79,7 +79,18 @@ namespace CppCoverage
 			filterAssistant_);
 
 		const auto& startInfo = settings.GetStartInfo();
-		int exitCode = debugger.Debug(startInfo, *this);
+		int exitCode;
+		if (startInfo.GetPath().string()._Starts_with("pid="))
+		{
+			auto pidStr = startInfo.GetPath().string().substr(4);
+			int pid = std::stoi(pidStr);
+			exitCode = debugger.DebugProcess(pid, *this);
+		}
+		else
+		{
+			exitCode = debugger.Debug(startInfo, *this);
+		}
+
 		const auto& path = startInfo.GetPath();
 
 		auto warningMessageLines = coverageFilterManager_->ComputeWarningMessageLines(
