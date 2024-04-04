@@ -37,6 +37,7 @@ namespace CppCoverage
             bool stopOnAssert);
 
 		int Debug(const StartInfo&, IDebugEventsHandler&);
+		int DebugProcess(int pid, IDebugEventsHandler& debugEventsHandler);
 		size_t GetRunningProcesses() const;
 		size_t GetRunningThreads() const;
 
